@@ -1,6 +1,7 @@
 import json
+import uuid
 from repositories.task_repository import TaskRepository
-from models.task import Task
+from models.task import CreateTaskRequest, Task
 from pydantic import ValidationError
 from botocore.exceptions import ClientError
 
@@ -9,11 +10,11 @@ task_repo = TaskRepository()
 def create_task(event, context):
     try:
         body = json.loads(event["body"])
-        task = Task(**body)
+        task = Task(taskId=str(uuid.uuid4()), **body)
         task_repo.create_task(task)
         return {
             "statusCode": 201,
-            "body": json.dumps({"message": "Task created successfully"}),
+            "body": json.dumps(task.model_dump()),
         }
     except ValidationError as e:
         return {"statusCode": 400, "body": json.dumps({"error": "Validation error", "details": e.errors()})}
@@ -38,7 +39,7 @@ def delete_task(event, context):
     try:
         task_id = event["pathParameters"]["taskId"]
         task_repo.delete_task(task_id)
-        return {"statusCode": 200, "body": json.dumps({"message": "Task deleted"})}
+        return {"statusCode": 204}
     except ClientError as e:
         return {"statusCode": 500, "body": json.dumps({"error": "DynamoDB error", "details": str(e)})}
     except Exception as e:
